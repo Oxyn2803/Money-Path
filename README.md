@@ -371,28 +371,75 @@ Implementado como o módulo **Resumen** (`/app/resumen`), a casa natural dos rel
 
 **Arquitectura:** `lib/reports.ts` (`getReportsData` coleta séries/totales/comparaciones; `buildInsights` gera insights); `components/reportes/reports-charts.tsx` (gráficos SVG server-rendered).
 
-## 22. Banco de dados e modelo (Etapas 0/3/4/5)
+## 22. Academia (Etapa 19)
 
-PostgreSQL via Drizzle ORM. Entrada única: `src/db/schema.ts`. **36 tabelas**: `currencies`; identidade (`users`, `profiles`, `financial_profiles`, `user_settings`); auth (`sessions`, `accounts`, `verifications`); categorias; movimentos (`income`, `expenses`, `recurring_transactions`, `future_receipts`, `installments`); dívidas (`debts`, `debt_payments`); ahorro (`emergency_funds`, `goals`, `goal_contributions`); investimentos; patrimônio (`assets`, `liabilities`, `net_worth_snapshots`); `budgets`; conta (`notifications`, `subscriptions`); Money AI; academia; `calculations`; **`money_path_states`** (Etapa 5); `app_settings`.
+Área educacional em `/app/academia` com catálogo persistido em `academy_categories`/`academy_contents` (seed idempotente `src/db/seed-academy.sql`).
 
-Convenções: UUID v4; `created_at`/`updated_at` em tudo; `numeric(18,2)` com cálculo em centavos; multi-moeda explícita (FK `currencies`); borrado suave; constraints/índices por domínio. Na Etapa 7, `expenses` ganhou `kind` (fijo/variable, índice `(user_id, kind)`) e `note`; na Etapa 8, `future_receipts` ganhou `recurring_id` (vínculo com a plantilla + anti-duplicados); na Etapa 9, `installments` ganhou `category_id` (FK a categorias de gasto) e `payment_method`; na Etapa 10, `debts` ganhou `priority` (1–3, check) e `total_installments`; na Etapa 11, `expense_categories` ganhou `is_essential` e `financial_profiles` ganhou `essential_monthly_override` (nullable); na Etapa 12, `goals` ganhou `category` (enum) e `priority` virou NOT NULL 1–3 (check); na Etapa 13, `investment_accounts` ganhou `balance` e `investments` ganhou `quantity` (18,6) e `average_price` (18,2); na Etapa 14, `assets` ganhou `valuation_source` e `external_reference`, e o enum de `liabilities` foi ajustado (financing/personal_loan/credit_card/other).
+**Categorias (8):** Finanzas personales · Presupuesto · Deudas · Ahorro · Fondo de emergencia · Inversiones · Patrimonio · Hábitos financieros.
+
+**Conteúdos (24):** artigos (`article`), aulas (`video`), guias (`guide`) e conteúdos curtos (`tip`), com nível e duração. **Conteúdo educacional geral e básico** (conceitos, definições, hábitos) — sem recomendações complexas nem conteúdo de investimento específico, conforme a regra da etapa; nota permanente de que não é asesoría nem substitui fontes oficiais.
+
+**Experiência:** barra de **progresso** ("X de 24 concluidos" + %), filtros por categoria (com contador "concluídos/total" por chip), filtros de estado (Todo/Favoritos/Concluidos), visor de conteúdo em modal com nota de alcance, **favoritos** (coração) e **marcar como concluído** (com estado Concluido no card).
+
+**Persistência:** nova tabela `academy_progress` (única por usuário+conteúdo, unique index) com `is_completed`, `is_favorite` e `completed_at` — via `POST /api/academy` com sessão (401 sem sessão; idempotente, sem duplicar).
+
+## 23. Notificações (Etapa 20)
+
+Centro de notificações em `/app/notificaciones` sobre a tabela `notifications` existente.
+
+**Tipos (8, configuráveis):** receita futura · vencimiento · parcela · meta · deuda · orçamento · fondo de emergencia · insights.
+
+**Geração (anti-excesso):** gerada ao abrir o centro (`generateNotifications`), **idempotente por chave** (cada aviso aparece uma vez — reabrir não duplica, verificado), respeitando as preferências e com janelas reais (vencimientos/cobros/parcelas: 7 dias; metas: 30 dias; orçamento: mês corrente; insight: maior subida ≥10% vs mês anterior). Tope de 15 avisos por corrida. **Nunca inventa**: todos os avisos derivam de dados existentes (verificado: os 8 tipos dispararam com dados reais).
+
+**Controle (preferências):** 8 toggles por tipo via `POST {op:"preferences"}` persistidos em `user_settings` (`notifications.enabled`); tipo desativado não gera (verificado: desativar "insight" → 7 avisos; reativar → 8).
+
+**UX:** contador de não-lidas (badge no cabeçalho e na sidebar via `NotificationCount`, atualizado no monte/foco sem polling), **marcar como lida** (individual), **marcar todo como leído**, **limpar leídas** (`dismissed`, não re-gera), tempo relativo ("hace 2 h"), empty state e nota de "sem duplicados".
+
+**API:** `GET /api/notifications` (lista + contador + preferências) e `POST` (`read`/`readAll`/`clear`/`generate`/`preferences`) — 401 sem sessão.
+
+## 24. Configuración (Etapa 21)
+
+Implementação completa em `/app/configuracion` com 4 abas: **Perfil · Preferências · Privacidad · Cuenta**.
+
+**Perfil:** nome (via Better Auth `updateUser` + sync `profiles.display_name`), email (Better Auth `changeEmail` com `updateEmailWithoutVerification` — o endpoint aceita newEmail; sem serviço de email a atualização é direta e a sessão continua ativa), país (`financial_profiles.country`) e **idioma** (`profiles.locale`).
+
+**Preferências:**
+- **Tema**: preferência persistida em `user_settings` (`ui.theme`) e **plumbing real**: o layout do aplicativo aplica `data-theme` no wrapper (claro ativo; escuro desabilitado com "Próximamente" — um tema parcial quebraria o Design System, então a paleta escura chega com o passe de design).
+- **Moeda base**: trocar exige **confirmação explícita** quando existem registros (verificado: 409 sem `confirm`, 200 com). Os registros **conservam sua moeda** (nunca há conversão ou mistura silenciosa); agregações usam apenas a moeda base.
+- **Notificações** e **Panel**: os mesmos controles dos módulos originais (armazenamento único compartilhado).
+
+**Privacidade (controles disponíveis pela arquitetura):**
+- Nota verificável: Money AI/Money Path™ não usam LLM externo (dado local apenas).
+- **Exportar mis datos**: `GET /api/settings/export` → JSON `money-path-export-v1` com 28 seções (perfil, preferências, categorias, movimentos, dívidas, metas, investimentos, patrimônio, notificaciones, IA, academia, cálculos, estados do Money Path™).
+- **Borrar historial de Money AI** e **Reiniciar progreso de la Academia** — com `ConfirmDialog` (dados não financeiros, eliminação explícita).
+- Nota permanente: nenhuma exclusão automática de dados financeiros.
+
+**Cuenta:** alterar senha (Better Auth `changePassword`, validação de confirmação), sair (`signOut`), e **solicitar exclusão da conta**: grava `account.deletionRequest` (pending) em `user_settings` após o usuário digitar a palavra `ELIMINAR` — **não remove nada** (verificado: usuário e perfil permanecem; cancelável).
+
+**Internacionalização (preparação):** o seletor lista `pt-BR` e `en-US` como `disabled` ("Próximamente"); a API rejeita idiomas sem dicionário ativo — `ACTIVE_LANGUAGES` é a fonte da verdade, então adicionar um locale = criar dicionário + habilitar entrada.
+
+## 25. Banco de dados e modelo (Etapas 0/3/4/5)
+
+PostgreSQL via Drizzle ORM. Entrada única: `src/db/schema.ts`. **37 tabelas**: `currencies`; identidade (`users`, `profiles`, `financial_profiles`, `user_settings`); auth (`sessions`, `accounts`, `verifications`); categorias; movimentos (`income`, `expenses`, `recurring_transactions`, `future_receipts`, `installments`); dívidas (`debts`, `debt_payments`); ahorro (`emergency_funds`, `goals`, `goal_contributions`); investimentos; patrimônio (`assets`, `liabilities`, `net_worth_snapshots`); `budgets`; conta (`notifications`, `subscriptions`); Money AI; academia (`academy_categories`, `academy_contents`, **`academy_progress`** — Etapa 19); `calculations`; **`money_path_states`** (Etapa 5); `app_settings`. Na Etapa 19 o enum `kind` de `academy_contents` ganhou `tip` (conteúdos curtos); notificações usam `user_settings` para preferências (Etapa 20).
+
+Convenções: UUID v4; `created_at`/`updated_at` em tudo; `numeric(18,2)` com cálculo em centavos; multi-moeda explícita (FK `currencies`); borrado suave; constraints/índices por domínio. Preferências do usuário em `user_settings` (`ui.theme`, `dashboard.indicators`, `notifications.enabled`, `account.deletionRequest`). Na Etapa 7, `expenses` ganhou `kind` (fijo/variable, índice `(user_id, kind)`) e `note`; na Etapa 8, `future_receipts` ganhou `recurring_id` (vínculo com a plantilla + anti-duplicados); na Etapa 9, `installments` ganhou `category_id` (FK a categorias de gasto) e `payment_method`; na Etapa 10, `debts` ganhou `priority` (1–3, check) e `total_installments`; na Etapa 11, `expense_categories` ganhou `is_essential` e `financial_profiles` ganhou `essential_monthly_override` (nullable); na Etapa 12, `goals` ganhou `category` (enum) e `priority` virou NOT NULL 1–3 (check); na Etapa 13, `investment_accounts` ganhou `balance` e `investments` ganhou `quantity` (18,6) e `average_price` (18,2); na Etapa 14, `assets` ganhou `valuation_source` e `external_reference`, e o enum de `liabilities` foi ajustado (financing/personal_loan/credit_card/other).
 
 ```bash
 npx drizzle-kit push                          # aplica o modelo
 psql "$DATABASE_URL" -f src/db/seed.sql       # seed de moedas (idempotente)
 ```
 
-## 23. Módulos
+## 26. Módulos
 
-Capacidades de referência (registro em `src/config/modules.ts`): Ingresos, Gastos fijos, Gastos variables, Categorías, Educación financiera (Academia) — **planificados**, aguardando suas etapas. **Disponíveis: Panel/dashboard (Etapa 6), Presupuesto (Etapa 7), Ingresos recurrentes e Cobros futuros (Etapa 8), Pagos a plazos (Etapa 9), Deudas (Etapa 10), Fondo de emergencia (Etapa 11), Metas (Etapa 12), Inversiones (Etapa 13), Patrimonio (Etapa 14), Calculadoras (Etapa 15).**
+Capacidades de referência (registro em `src/config/modules.ts`): Ingresos, Gastos fijos, Gastos variables, Categorías — **planificados**, aguardando suas etapas. **Disponíveis: Panel/dashboard (Etapa 6), Presupuesto (Etapa 7), Ingresos recurrentes e Cobros futuros (Etapa 8), Pagos a plazos (Etapa 9), Deudas (Etapa 10), Fondo de emergencia (Etapa 11), Metas (Etapa 12), Inversiones (Etapa 13), Patrimonio (Etapa 14), Calculadoras (Etapa 15), Educación financiera/Academia (Etapa 19).** Áreas funcionais sem entrada no registry: Money Path™ (16), Money AI (17), Resumen/Reports (18), Notificaciones (20), Configuración (21).
 
 **Diferenciais:** Money Path™ (motor de rota de ação, Etapa 16) e Money AI (assistente contextual sobre os dados do usuário, Etapa 17) — ambos implementados. A área **Resumen** foi implementada como Reports & Insights na Etapa 18.
 
-## 24. Design System (Etapa 1)
+## 27. Design System (Etapa 1)
 
 Paleta própria petrol + cobre sobre superfícies cálidas (tokens `@theme`): `primary #14656d`, `primary-hover #0f5159`, `background #f4f3ee`, `surface #fcfbf8`, `elevated #fefdfa`, `text #16262b`, `muted #54656b`, `success #1c8a56`, `warning #a8690c`, `danger #c03d36`, `info #1f6e96`, `border #e4e1d5`, acento cobre. Componentes: Button, Input, Select, Checkbox, Switch, Slider, Card, Modal, Drawer, Badge, Tooltip, Dropdown, Tabs, Progress, Alert, Toast, Empty/Loading/Error states, `MoneyValue`, `Sparkline`; ícones SVG consistentes. Padrões financeiros: receita `+` verde, despesa `−` vermelha, dívida âmbar, meta petrol, patrimônio tinta, investimento azul-petróleo. Vitrine em `/design`. Mobile first.
 
-## 25. Etapas de desenvolvimento
+## 28. Etapas de desenvolvimento
 
 | Etapa | Conteúdo                                                                                     | Estado    |
 | ----- | -------------------------------------------------------------------------------------------- | --------- |
@@ -414,12 +461,15 @@ Paleta própria petrol + cobre sobre superfícies cálidas (tokens `@theme`): `p
 | 15    | Calculadoras — interés compuesto, meta financiera, primer gran objetivo y comprar vs rentar; campos explicados, validados, com resultado e "simular de nuevo" | ✅ Completa |
 | 16    | Money Path™ — motor que convierte ingresos/gastos/deudas/ahorro/metas/inversiones/patrimonio en una ruta de acción (situación, prioridad, acción, impacto, próximo paso) + simulación "¿y si reduzco gastos?" | ✅ Completa |
 | 17    | Money AI — asistente contextual que responde sobre el propio dinero con datos reales: conversa, histórico, sugerencias, preguntas rápidas y cards de contexto | ✅ Completa |
-| **18** | **Reports & Insights** — implementa o módulo Resumen: informes por período (1/3/6/12 meses), comparación entre períodos e insights automáticos | ✅ Completa |
-| 19+   | Definidas e aprovadas pelo produto antes de serem construídas                                 | Por definir |
+| 18    | Reports & Insights — implementa o módulo Resumen: informes por período (1/3/6/12 meses), comparación entre períodos e insights automáticos | ✅ Completa |
+| 19    | Academia — área educacional com 8 categorías, 24 contenidos (artículos/aulas/guías/consejos), progreso, concluidos y favoritos | ✅ Completa |
+| **20** | **Notificaciones** — centro con 8 tipos configurables, contador, marcar como leída, limpiar y preferencias; generación idempotente anti-exceso | ✅ Completa |
+| **21** | **Configuración** — perfil (nome/email/país/moeda/idioma), preferências (tema, moeda com confirmação, notificações, panel), privacidade (exportação, controles) e conta (senha, sair, solicitação de exclusão sem remoção automática) | ✅ Completa |
+| 22+   | Definidas e aprovadas pelo produto antes de serem construídas                                 | Por definir |
 
-**Etapa atual: 18 — Reports & Insights (concluída).** Nenhuma etapa seguinte foi iniciada.
+**Etapa atual: 21 — Configuración (concluída).** Todas as 14 áreas da navegação do aplicativo estão implementadas. Nenhuma etapa seguinte foi iniciada.
 
-## 26. Funcionalidades concluídas
+## 29. Funcionalidades concluídas
 
 **Etapa 0 — Fundação:** i18n tipado `es-MX`; núcleo monetário em centavos; registro locales/moedas; `app_settings`; painel de verificação em vivo; healthcheck real.
 
@@ -573,15 +623,41 @@ Paleta própria petrol + cobre sobre superfícies cálidas (tokens `@theme`): `p
 - ✅ Tudo server-rendered; sem dados → estado vazio (nunca inventa).
 - ✅ Proteção: sem sessão o conteúdo não renderiza (gate híbrido).
 
-## 27. Funcionalidades pendentes
+**Etapa 19 — Academia:**
 
-- Implementação dos módulos restantes sobre o modelo de dados (academia, notificaciones, configuración) — aguardando suas etapas.
+- ✅ 8 categorias (finanzas personales, presupuesto, deudas, ahorro, fondo de emergencia, inversiones, patrimonio, hábitos) e 24 conteúdos (artículos, aulas, guías, consejos) com nível e duração, semeados via `seed-academy.sql` (idempotente).
+- ✅ Conteúdo educacional geral e básico, sem recomendações complexas; nota permanente de que não é asesoría.
+- ✅ Progresso ("X de 24" + %), chips por categoria com concluídos/total, filtros Todo/Favoritos/Concluidos.
+- ✅ Favoritos (coração) e marcar como concluído, com estado Concluido no card e visor em modal.
+- ✅ Nova tabela `academy_progress` (única por usuário+conteúdo); API com sessão, idempotente (sem duplicar) e 401 sem sessão.
+
+**Etapa 20 — Notificações:**
+
+- ✅ Centro de notificações com os 8 tipos (receita futura, vencimiento, parcela, meta, deuda, orçamento, fondo de emergencia, insights) — todos dispararam com dados reais (verificado).
+- ✅ Geração idempotente por chave: reabrir não duplica (verificado 7→7); janelas reais (7/30 dias, mês corrente); tope de 15 por corrida; nunca inventa dados.
+- ✅ Preferências por tipo (8 toggles) persistidas em `user_settings`; tipo desativado não gera (verificado insight off → 7; on → 8).
+- ✅ Contador de não-lidas no cabeçalho e na sidebar (`NotificationCount`, atualiza no monte/foco sem polling).
+- ✅ Marcar como lida (individual), marcar tudo como leído, limpar leídas (dismissed sem re-gerar), tempo relativo e empty state.
+- ✅ API GET/POST com 401 sem sessão; preferências persistem entre sessões.
+
+**Etapa 21 — Configuración:**
+
+- ✅ Perfil: nome (Better Auth updateUser + sync `display_name`), email (changeEmail habilitado sem serviço de correo), país e idioma validados no servidor (400 para país inválido / idioma sem dicionário).
+- ✅ Preferências: tema persistido (`ui.theme`) com `data-theme` aplicado no layout (oscuro desabilitado até o passe de design — verificado na HTML); moeda base com **porta de confirmação explícita** (409 sem `confirm`, 200 com; registros conservam sua moeda, verificado round-trip MXN→BRL→MXN); notificações e indicadores do panel compartilhando o armazenamento dos módulos originais.
+- ✅ Privacidade: exportação JSON `money-path-export-v1` (28 seções; 401 sem sessão), apagar histórico do Money AI e reiniciar progreso da Academia com `ConfirmDialog` (verificado 1→0 em ambos).
+- ✅ Conta: alteração de senha (testada com restauração), sair e **solicitar exclusão** com palavra-chave `ELIMINAR` — registra `account.deletionRequest` pendente sem apagar nada (verificado: usuário e perfil intactos) e cancelável.
+- ✅ i18n preparada: `pt-BR`/`en-US` listados como "Próximamente" (desabilitados); `ACTIVE_LANGUAGES` é a fonte da verdade.
+
+## 30. Funcionalidades pendentes
+
+- Módulos base ainda sem área própria (ingresos, gastos, categorías como CRUD dedicado: hoy viven dentro de Presupuesto) — aguardando suas etapas.
+- Paleta escura completa (plumbing `data-theme` ya listo; falta el pase de diseño de tokens/uso en componentes).
 - Geração de recorrências por job/agenda (hoje a geração é idempotente sob demanda, ao abrir o módulo).
 - Integração bancária real — a importação atual é por CSV.
 - Verificação de email no registro — quando houver serviço de email configurado.
 - Ativação de novos locales/monedas LATAM — estrutura pronta.
 
-## 28. Decisões técnicas
+## 31. Decisões técnicas
 
 1. **Dinheiro = centavos inteiros na aplicação**; `numeric(18,2)` no banco.
 2. **Multi-moeda explícita:** FK `currency` em todo valor.
@@ -614,13 +690,16 @@ Paleta própria petrol + cobre sobre superfícies cálidas (tokens `@theme`): `p
 29. **Calculadoras como funciones puras en centavos (Etapa 15):** la lógica vive en `lib/calculators.ts` sin DB ni efectos colaterales; cada calculadora valida y explica sus campos y aclara que son proyecciones, no garantías.
 30. **Money Path™ como motor de análisis puro (Etapa 16):** `analyzeMoneyPath`/`planForFinding`/`simulateExpenseCut` son funciones puras sin DB; el servidor solo recolecta datos reales y persiste el estado de la ruta. Toda recomendación se deriva de datos existentes y las proyecciones se marcan como estimadas.
 31. **Money AI determinístico y anclado en datos (Etapa 17):** sin LLM externo (no hay riesgo de alucinación ni dependencia de API); el motor detecta intenciones y responde con cifras reales del usuario. Cuando falta información lo dice explícitamente en vez de inventar.
-32. **Insights como función pura derivada de comparaciones (Etapa 18):** `buildInsights` recibe los datos del informe y genera insights solo cuando hay base real (categoría vs período anterior, ahorro, patrimonio, pagos a deudas, ganancia de inversiones, ingresos). Sin datos, no se generan insights falsos.
-33. **i18n por dicionários tipados**; `es-MX` base.
-34. **Identidade visual própria**; tokens semânticos em `@theme`.
-35. **Responsividade total** (mobile first; dashboard em coluna única no celular).
-36. **Site público ≠ aplicativo** (`/` e `/design` públicos; produto em `/app/*` protegido).
+32. **Insights como função pura derivada de comparaciones (Etapa 18):** `buildInsights` recibe los datos del informe y genera insights solo cuando hay base real (categoría vs período anterior, ahorro, patrimonio, pagos a deudas, ganancia de inversiones, ingresos). Sin datos, no se generan insights falsos.
+33. **Conteúdo educacional conservador (Etapa 19):** la Academia solo publica conceptos básicos revisables (definiciones, hábitos, métodos generales); sin recomendaciones complejas ni específicas de inversión, con nota de no-asesoría visible. El progreso vive en `academy_progress` (upsert único por usuario+contenido).
+34. **Notificaciones anti-exceso (Etapa 20):** generación bajo demanda al abrir el centro, dedupe por clave persistente (nunca re-avisa algo ya visto, aunque se limpió), ventanas temporales reales, tope por corrida y preferencias por tipo en `user_settings`. Cada aviso deriva de datos existentes — cero avisos inventados.
+35. **Configuración sin destrucción silenciosa (Etapa 21):** cambiar moneda exige confirmación explícita cuando hay registros (nunca se convierten ni mezclan); la exclusión de cuenta es una **solicitud** (nunca un borrado automático) y los controles de privacidad solo tocan datos no financieros, siempre con diálogo de confirmación. El plumbing de tema (`ui.theme` + `data-theme`) queda listo sin activar un modo oscuro incompleto.
+36. **i18n por dicionários tipados**; `es-MX` base.
+37. **Identidade visual própria**; tokens semânticos em `@theme`.
+38. **Responsividade total** (mobile first; dashboard em coluna única no celular).
+39. **Site público ≠ aplicativo** (`/` e `/design` públicos; produto em `/app/*` protegido).
 
-## 29. Regras de desenvolvimento (obrigatórias)
+## 32. Regras de desenvolvimento (obrigatórias)
 
 1. Não remover funcionalidades existentes.
 2. Não substituir funcionalidades reais por mock data sem necessidade.
