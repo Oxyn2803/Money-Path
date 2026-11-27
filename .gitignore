@@ -1,0 +1,25 @@
+# ── Secrets ────────────────────────────────────────────────────────────
+# Nunca versionar credenciais: DATABASE_URL, BETTER_AUTH_SECRET, RESEND_API_KEY.
+.env
+.env.*
+!.env.example
+
+# ── Dependências ───────────────────────────────────────────────────────
+node_modules/
+
+# ── Build ──────────────────────────────────────────────────────────────
+.next/
+out/
+build/
+next-env.d.ts
+
+# ── Registros e temporários ────────────────────────────────────────────
+*.log
+npm-debug.log*
+.pnpm-debug.log*
+.DS_Store
+*.tsbuildinfo
+
+# ── Editores / IDEs ────────────────────────────────────────────────────
+.vscode/
+.idea/

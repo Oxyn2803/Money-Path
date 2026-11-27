@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Money Path">
+  <!--
+    Favicon de Money Path (Etapa 27 — producción).
+    Cuadrado petróleo con el trazo cobre del "camino": misma identidad que el
+    sello PRO y el cintillo del módulo Money Path™.
+  -->
+  <rect width="64" height="64" rx="14" fill="#14656d" />
+  <path
+    d="M12 44 C 20 26, 28 50, 36 32 S 50 20, 54 24"
+    fill="none"
+    stroke="#e2ad80"
+    stroke-width="5"
+    stroke-linecap="round"
+    stroke-dasharray="7 6"
+  />
+  <circle cx="54" cy="24" r="5" fill="#c06e33" />
+  <circle cx="12" cy="44" r="4" fill="#ecf4f4" />
+</svg>

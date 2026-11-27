@@ -1,0 +1,250 @@
+@import "tailwindcss";
+
+/*
+ * Money Path — Design Tokens (Etapa 29 — Redesign visual)
+ *
+ * Dark mode:  fundo #101210 / #1a1f1a / #292929 · accent #a4f73d (verde-lima)
+ * Light mode: fundo #ffffff / #f5f5f5 · accent #a4f73d · texto #1a1a1a
+ * Tipografia: Inter (sans primária) + Space Grotesk (display)
+ */
+
+@theme {
+  /* ── Fontes ──────────────────────────────────────────────────────── */
+  --font-sans: var(--font-inter), var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), ui-sans-serif, sans-serif;
+
+  /* ── Superfícies (dark — padrão) ──────────────────────────────────── */
+  --color-background: #101210;
+  --color-surface: #1a1f1a;
+  --color-elevated: #222822;
+
+  /* ── Texto ───────────────────────────────────────────────────────── */
+  --color-text: #f0f0f0;
+  --color-muted: #9a9a9a;
+  --color-faint: #5a5a5a;
+
+  /* ── Bordas ──────────────────────────────────────────────────────── */
+  --color-border: #2a2f2a;
+  --color-border-strong: #3a3f3a;
+
+  /* ── Primary accent: verde-lima #a4f73d ──────────────────────────── */
+  --color-primary: #a4f73d;
+  --color-primary-hover: #90e030;
+  --color-primary-soft: #1a2a0a;
+  --color-primary-50: #f0fce0;
+  --color-primary-100: #d8f7a0;
+  --color-primary-200: #c0f070;
+  --color-primary-300: #b4f450;
+  --color-primary-400: #a4f73d;
+  --color-primary-500: #90e030;
+  --color-primary-600: #78c020;
+  --color-primary-700: #5a9018;
+  --color-primary-800: #3c6010;
+  --color-primary-900: #243808;
+  --color-primary-950: #101810;
+
+  /* ── Accent (verde escuro para details) ───────────────────────────── */
+  --color-accent-100: #e8ffc8;
+  --color-accent-200: #c8f080;
+  --color-accent-300: #a4f73d;
+  --color-accent-400: #90e030;
+  --color-accent-500: #78c020;
+  --color-accent-600: #5a9018;
+
+  /* ── Estados semânticos ──────────────────────────────────────────── */
+  --color-success: #a4f73d;
+  --color-success-strong: #78c020;
+  --color-success-soft: #1a2a0a;
+  --color-warning: #f0a020;
+  --color-warning-strong: #d08010;
+  --color-warning-soft: #2a1f05;
+  --color-danger: #f04040;
+  --color-danger-strong: #c02828;
+  --color-danger-soft: #2a0a0a;
+  --color-info: #4090f0;
+  --color-info-strong: #2070d0;
+  --color-info-soft: #0a1a2a;
+
+  /* ── Padrões financeiros ─────────────────────────────────────────── */
+  --color-f-income: #a4f73d;
+  --color-f-expense: #f04040;
+  --color-f-debt: #f0a020;
+  --color-f-goal: #a4f73d;
+  --color-f-equity: #f0f0f0;
+  --color-f-investment: #4090f0;
+
+  /* ── Sombras ─────────────────────────────────────────────────────── */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.2);
+  --shadow-elevated: 0 2px 4px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.3);
+  --shadow-overlay: 0 24px 64px rgb(0 0 0 / 0.6);
+
+  /* ── Animações ───────────────────────────────────────────────────── */
+  --animate-fade-in: fade-in 0.16s ease-out both;
+  --animate-scale-in: scale-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-slide-up: slide-up 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-slide-in-right: slide-in-right 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-toast-in: toast-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-rise: rise 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-toast-progress: toast-progress linear forwards;
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
+  }
+  @keyframes toast-progress {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.96) translateY(6px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+}
+
+/* ── Light mode override via data-theme ─────────────────────────────── */
+[data-theme="light"] {
+  --color-background: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-elevated: #ffffff;
+
+  --color-text: #1a1a1a;
+  --color-muted: #555555;
+  --color-faint: #999999;
+
+  --color-border: #e0e0e0;
+  --color-border-strong: #cccccc;
+
+  /* primary verde-lima mantido */
+  --color-primary-soft: #eeffd8;
+
+  /* financeiros no claro */
+  --color-f-income: #5a9018;
+  --color-f-expense: #c02828;
+  --color-f-debt: #d08010;
+  --color-f-goal: #5a9018;
+  --color-f-equity: #1a1a1a;
+  --color-f-investment: #2070d0;
+
+  --color-success-soft: #eeffd8;
+  --color-warning-soft: #fff8e0;
+  --color-danger-soft: #ffe8e8;
+  --color-info-soft: #e8f0ff;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.05), 0 4px 16px rgb(0 0 0 / 0.08);
+  --shadow-elevated: 0 2px 4px rgb(0 0 0 / 0.08), 0 12px 32px rgb(0 0 0 / 0.12);
+  --shadow-overlay: 0 24px 64px rgb(0 0 0 / 0.2);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background font-sans text-text antialiased;
+  }
+
+  ::selection {
+    background-color: #a4f73d;
+    color: #101210;
+  }
+
+  :focus-visible {
+    outline: 2px solid #a4f73d;
+    outline-offset: 2px;
+  }
+}
+
+/* ── Scrollers horizontais (abas) ───────────────────────────────────── */
+.mp-scroller {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-snap-type: x proximity;
+}
+.mp-scroller::-webkit-scrollbar { display: none; }
+.mp-scroller > * { scroll-snap-align: start; }
+
+/* ── Redução de movimento ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Slider ─────────────────────────────────────────────────────────── */
+.mp-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-border-strong);
+  cursor: pointer;
+}
+.mp-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: var(--color-elevated);
+  border: 2px solid var(--color-primary);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+  transition: transform 0.12s ease;
+}
+.mp-range::-webkit-slider-thumb:hover { transform: scale(1.1); }
+.mp-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: var(--color-elevated);
+  border: 2px solid var(--color-primary);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+}
+.mp-range:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+}
+
+/* ── Gradiente radial do hero (dark mode) ───────────────────────────── */
+.mp-hero-glow {
+  position: relative;
+}
+.mp-hero-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 40% at 50% 60%, rgba(164, 247, 61, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Light mode: hero sem glow escuro ───────────────────────────────── */
+[data-theme="light"] .mp-hero-glow::before {
+  background: radial-gradient(ellipse 60% 40% at 50% 60%, rgba(164, 247, 61, 0.08) 0%, transparent 70%);
+}
