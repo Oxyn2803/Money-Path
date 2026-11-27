@@ -129,7 +129,7 @@ export default function TerminosPage() {
 
       <Section title="7. Limitación de responsabilidad">
         <p>
-          El servicio se entrega "tal cual". En la máxima medida permitida por
+          El servicio se entrega &ldquo;tal cual&rdquo;. En la máxima medida permitida por
           la ley, Money Path no responde por decisiones tomadas a partir de sus
           cálculos, por la exactitud de datos que introduce el usuario ni por
           lucro cesante derivado del uso del servicio.

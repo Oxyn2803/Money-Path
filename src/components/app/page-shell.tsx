@@ -89,9 +89,12 @@ export async function PageShell({ navId, hideBreadcrumbs = false, active = false
 export async function ModulePage({ navId }: { navId: NavItemId }) {
   const dict = await getDictionary();
   const item = getNavItem(navId);
-  const texts = dict.pages[navId as keyof typeof dict.pages] as { title: string };
+  const texts = dict.pages[navId as keyof typeof dict.pages] as {
+    title: string;
+  };
   const Icon = NAV_ICONS[navId];
-  const module = item.moduleRef
+
+  const moduleInfo = item.moduleRef
     ? MODULES.find((entry) => entry.id === item.moduleRef)
     : undefined;
 
@@ -111,13 +114,19 @@ export async function ModulePage({ navId }: { navId: NavItemId }) {
           <span className="font-display text-sm font-semibold text-faint">
             {dict.pages.common.reservedFor}
           </span>
+
           <span className="font-display text-lg font-bold text-text">
             {texts.title}
           </span>
-          {module ? (
+
+          {moduleInfo ? (
             <span className="text-xs text-faint">
-              {dict.modules.items[module.id as keyof typeof dict.modules.items]?.name} ·{" "}
-              {dict.modules.status[module.status]}
+              {
+                dict.modules.items[
+                  moduleInfo.id as keyof typeof dict.modules.items
+                ]?.name
+              }{" "}
+              · {dict.modules.status[moduleInfo.status]}
             </span>
           ) : null}
         </div>

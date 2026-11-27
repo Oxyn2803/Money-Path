@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,60 @@ import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useDictionary } from "@/lib/i18n";
 import type { CategoryView } from "@/lib/presupuesto-shared";
+
+// ✅ CategoryList movido para FORA do componente pai
+interface CategoryListProps {
+  title: string;
+  items: CategoryView[];
+  kindValue: "income" | "expense";
+  archiveLabel: string;
+  systemLabel: string;
+  typeLabels: Record<string, string>;
+  onArchive: (kindValue: "income" | "expense", id: string) => void;
+}
+
+function CategoryList({
+  title,
+  items,
+  kindValue,
+  archiveLabel,
+  systemLabel,
+  typeLabels,
+  onArchive,
+}: CategoryListProps) {
+  return (
+    <div>
+      <p className="mb-2 text-xs font-bold uppercase tracking-wider text-faint">{title}</p>
+      <ul className="flex max-h-44 flex-col gap-1.5 overflow-y-auto pr-1">
+        {items.map((category) => (
+          <li
+            key={category.id}
+            className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate text-sm font-semibold text-text">{category.name}</span>
+              {category.kind ? (
+                <Badge tone={category.kind === "fixed" ? "primary" : "neutral"}>
+                  {typeLabels[category.kind]}
+                </Badge>
+              ) : null}
+              {category.isSystem ? (
+                <Badge tone="outline">{systemLabel}</Badge>
+              ) : null}
+            </span>
+            <button
+              type="button"
+              onClick={() => onArchive(kindValue, category.id)}
+              className="shrink-0 text-xs font-bold text-muted transition-colors hover:text-danger"
+            >
+              {archiveLabel}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 /** Gestión de categorías personalizadas (crear / archivar). */
 export function CategoriesDialog({
@@ -26,7 +79,6 @@ export function CategoriesDialog({
   const dict = useDictionary();
   const router = useRouter();
   const { toast } = useToast();
-
   const [name, setName] = useState("");
   const [kind, setKind] = useState<"income" | "expense">("expense");
   const [expenseKind, setExpenseKind] = useState<"fixed" | "variable">("variable");
@@ -77,50 +129,6 @@ export function CategoriesDialog({
     }
   }
 
-  function CategoryList({
-    title,
-    items,
-    kindValue,
-  }: {
-    title: string;
-    items: CategoryView[];
-    kindValue: "income" | "expense";
-  }) {
-    return (
-      <div>
-        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-faint">{title}</p>
-        <ul className="flex max-h-44 flex-col gap-1.5 overflow-y-auto pr-1">
-          {items.map((category) => (
-            <li
-              key={category.id}
-              className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2"
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-sm font-semibold text-text">{category.name}</span>
-                {category.kind ? (
-                  <Badge tone={category.kind === "fixed" ? "primary" : "neutral"}>
-                    {dict.presupuesto.types[category.kind]}
-                  </Badge>
-                ) : null}
-                {category.isSystem ? <Badge tone="outline">{dict.presupuesto.categories.system}</Badge> : null}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  // archivar usa el kind de la sección correspondiente
-                  void archiveWith(kindValue, category.id);
-                }}
-                className="shrink-0 text-xs font-bold text-muted transition-colors hover:text-danger"
-              >
-                {dict.presupuesto.categories.archive}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-
   return (
     <Modal
       open={open}
@@ -141,12 +149,24 @@ export function CategoriesDialog({
             error={error ?? undefined}
             maxLength={60}
           />
-          <Select label={dict.presupuesto.form.category} value={kind} onChange={(event) => setKind(event.target.value as "income" | "expense")}>
+          <Select
+            label={dict.presupuesto.form.category}
+            value={kind}
+            onChange={(event) => setKind(event.target.value as "income" | "expense")}
+          >
             <option value="income">{dict.presupuesto.tabs.ingresos}</option>
-            <option value="expense">{dict.presupuesto.tabs.fijos}/{dict.presupuesto.tabs.variables}</option>
+            <option value="expense">
+              {dict.presupuesto.tabs.fijos}/{dict.presupuesto.tabs.variables}
+            </option>
           </Select>
           {kind === "expense" ? (
-            <Select label={dict.presupuesto.categories.typeLabel} value={expenseKind} onChange={(event) => setExpenseKind(event.target.value as "fixed" | "variable")}>
+            <Select
+              label={dict.presupuesto.categories.typeLabel}
+              value={expenseKind}
+              onChange={(event) =>
+                setExpenseKind(event.target.value as "fixed" | "variable")
+              }
+            >
               <option value="fixed">{dict.presupuesto.types.fixed}</option>
               <option value="variable">{dict.presupuesto.types.variable}</option>
             </Select>
@@ -160,11 +180,19 @@ export function CategoriesDialog({
           title={dict.presupuesto.categories.incomeSection}
           items={incomeCategories}
           kindValue="income"
+          archiveLabel={dict.presupuesto.categories.archive}
+          systemLabel={dict.presupuesto.categories.system}
+          typeLabels={dict.presupuesto.types}
+          onArchive={archiveWith}
         />
         <CategoryList
           title={dict.presupuesto.categories.expenseSection}
           items={expenseCategories}
           kindValue="expense"
+          archiveLabel={dict.presupuesto.categories.archive}
+          systemLabel={dict.presupuesto.categories.system}
+          typeLabels={dict.presupuesto.types}
+          onArchive={archiveWith}
         />
       </div>
     </Modal>
